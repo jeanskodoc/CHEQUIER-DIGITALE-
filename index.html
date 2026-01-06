@@ -793,27 +793,90 @@
             position: relative;
         }
         
-        /* PRINT STYLES */
+        /* PRINT STYLES - CORRIGÉ */
         @media print {
             body * {
                 visibility: hidden;
             }
             
-            #print-area, #print-area * {
+            .print-area, .print-area * {
                 visibility: visible;
             }
             
-            #print-area {
+            .print-area {
                 position: absolute;
                 left: 0;
                 top: 0;
                 width: 100%;
                 background: white;
                 padding: 20px;
+                margin: 0;
+                box-shadow: none;
+                border: none;
             }
             
             .no-print {
                 display: none !important;
+            }
+            
+            .print-header {
+                text-align: center;
+                margin-bottom: 30px;
+                border-bottom: 3px solid #006400;
+                padding-bottom: 20px;
+            }
+            
+            .print-logo {
+                font-size: 48px;
+                background: #006400;
+                color: white;
+                width: 80px;
+                height: 80px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 15px;
+                font-weight: bold;
+            }
+            
+            .print-section {
+                margin-bottom: 25px;
+                page-break-inside: avoid;
+            }
+            
+            .print-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin: 20px 0;
+            }
+            
+            .print-table th {
+                background-color: #f0f0f0;
+                padding: 12px;
+                text-align: left;
+                border: 1px solid #ddd;
+                font-weight: bold;
+            }
+            
+            .print-table td {
+                padding: 12px;
+                border: 1px solid #ddd;
+            }
+            
+            .print-totals {
+                background-color: #f9f9f9;
+                padding: 20px;
+                border: 2px solid #006400;
+                margin-top: 30px;
+                page-break-inside: avoid;
+            }
+            
+            .print-signatures {
+                margin-top: 50px;
+                padding-top: 30px;
+                border-top: 2px dashed #666;
+                page-break-inside: avoid;
             }
         }
         
@@ -1174,9 +1237,6 @@
             </div>
             
             <div id="invoice-status" class="status-message"></div>
-            
-            <!-- Zone cachée pour l'impression -->
-            <div id="print-area" style="display: none;"></div>
         </div>
         
         <div id="history-tab" class="tab-content">
@@ -1264,6 +1324,11 @@
             <p style="font-weight: 600; margin-bottom: 5px;">ESODI - Facturation Digital</p>
             <p style="font-size: 11px;">WhatsApp: +228 92 87 16 05 | FCFA | Togo</p>
         </footer>
+    </div>
+
+    <!-- Zone d'impression cachée -->
+    <div id="print-container" style="display: none;">
+        <div id="print-content" class="print-area"></div>
     </div>
 
     <script>
@@ -1942,26 +2007,411 @@
             updatePrintArea();
         }
         
-        // Mettre à jour la zone d'impression
+        // CORRECTION : Mettre à jour la zone d'impression avec un format spécifique pour l'impression
         function updatePrintArea() {
-            const printArea = document.getElementById('print-area');
-            printArea.innerHTML = document.getElementById('invoice-preview-content').innerHTML;
+            const printContent = document.getElementById('print-content');
+            
+            // Calculer les totaux
+            let subtotal = 0;
+            let taxAmount = 0;
+            let total = 0;
+            
+            invoiceItems.forEach(item => {
+                const itemTotal = item.quantity * item.price;
+                subtotal += itemTotal;
+                taxAmount += itemTotal * (item.tax / 100);
+            });
+            
+            total = subtotal + taxAmount;
+            
+            // Convertir le total en lettres
+            const totalInWords = numberToFrenchWords(total);
+            
+            // Obtenir les signatures
+            const clientSignatureData = getSignatureDataURL('client');
+            const ownerSignatureData = getSignatureDataURL('owner');
+            
+            // Créer le contenu d'impression avec un format adapté pour l'impression
+            printContent.innerHTML = `
+                <div class="print-header">
+                    <div class="print-logo">ES</div>
+                    <h1 style="color: #006400; margin-bottom: 5px;">${ownerInfo.name}</h1>
+                    <p style="font-size: 16px;">${ownerInfo.address || 'Adresse à définir'}</p>
+                    <p style="font-size: 14px; margin-top: 5px;">
+                        <strong>Téléphone:</strong> ${ownerInfo.phone} | 
+                        <strong>Email:</strong> ${ownerInfo.email}
+                    </p>
+                    ${ownerInfo.siret ? `<p style="font-size: 14px;"><strong>RCCM:</strong> ${ownerInfo.siret}</p>` : ''}
+                </div>
+                
+                <div class="print-section">
+                    <h2 style="color: #006400; border-bottom: 2px solid #006400; padding-bottom: 10px; margin-bottom: 20px;">
+                        FACTURE N°: ${document.getElementById('invoice-number').value || 'FACT-ESODI-XXXX-001'}
+                    </h2>
+                    
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
+                        <div style="flex: 1;">
+                            <h3 style="color: #006400; margin-bottom: 10px;">Facturé à:</h3>
+                            <p style="font-size: 16px; margin-bottom: 5px;"><strong>${document.getElementById('client-name').value || 'Nom du client'}</strong></p>
+                            <p style="font-size: 14px;">${document.getElementById('client-phone').value || ''}</p>
+                            ${document.getElementById('client-email').value ? `<p style="font-size: 14px;">${document.getElementById('client-email').value}</p>` : ''}
+                            ${document.getElementById('client-address').value ? `<p style="font-size: 14px;">${document.getElementById('client-address').value}</p>` : ''}
+                        </div>
+                        
+                        <div style="flex: 1; text-align: right;">
+                            <h3 style="color: #006400; margin-bottom: 10px;">Détails facture:</h3>
+                            <p style="font-size: 14px; margin-bottom: 5px;"><strong>Date facturation:</strong> ${document.getElementById('invoice-date').value || new Date().toLocaleDateString('fr-FR')}</p>
+                            <p style="font-size: 14px; margin-bottom: 5px;"><strong>Date échéance:</strong> ${document.getElementById('due-date').value || new Date().toLocaleDateString('fr-FR')}</p>
+                            <p style="font-size: 14px;"><strong>Méthode paiement:</strong> ${document.getElementById('payment-method').value || 'Mobile Money'}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="print-section">
+                    <h3 style="color: #006400; margin-bottom: 15px;">Articles et Services</h3>
+                    
+                    <table class="print-table">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Quantité</th>
+                                <th>Prix unitaire</th>
+                                <th>TVA</th>
+                                <th>Total TTC</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${invoiceItems.length > 0 ? invoiceItems.map(item => {
+                                const itemTotal = item.quantity * item.price;
+                                const itemTotalTTC = itemTotal + (itemTotal * (item.tax / 100));
+                                return `
+                                    <tr>
+                                        <td>${item.description}</td>
+                                        <td>${item.quantity}</td>
+                                        <td>${formatFCFA(item.price)}</td>
+                                        <td>${item.tax}%</td>
+                                        <td>${formatFCFA(itemTotalTTC)}</td>
+                                    </tr>
+                                `;
+                            }).join('') : '<tr><td colspan="5" style="text-align: center;">Aucun article</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="print-totals">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span style="font-size: 16px;">Sous-total HT:</span>
+                        <span style="font-size: 16px; font-weight: bold;">${formatFCFA(subtotal)}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span style="font-size: 16px;">TVA:</span>
+                        <span style="font-size: 16px; font-weight: bold;">${formatFCFA(taxAmount)}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-top: 15px; border-top: 2px solid #006400;">
+                        <span style="font-size: 18px; font-weight: bold;">TOTAL TTC:</span>
+                        <span style="font-size: 20px; font-weight: bold; color: #006400;">${formatFCFA(total)}</span>
+                    </div>
+                    
+                    <div class="amount-in-words" style="margin-top: 20px; padding: 15px; background: #f0fff0; border-radius: 8px;">
+                        <p style="font-size: 16px;"><strong>Arrêtée à la somme de :</strong><br>${totalInWords}</p>
+                    </div>
+                </div>
+                
+                ${document.getElementById('invoice-notes').value ? `
+                    <div class="print-section">
+                        <h3 style="color: #006400; margin-bottom: 10px;">Notes:</h3>
+                        <p style="font-size: 14px; padding: 10px; background: #f9f9f9; border-radius: 5px;">
+                            ${document.getElementById('invoice-notes').value}
+                        </p>
+                    </div>
+                ` : ''}
+                
+                <div class="print-signatures">
+                    <div style="display: flex; justify-content: space-between; margin-top: 30px;">
+                        <div style="text-align: center; flex: 1;">
+                            <p style="font-size: 16px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #666; padding-bottom: 5px; display: inline-block;">
+                                Signature du Client
+                            </p>
+                            ${clientSignatureData ? 
+                                `<img src="${clientSignatureData}" style="max-width: 200px; max-height: 80px; display: block; margin: 10px auto;" alt="Signature client">` :
+                                '<div style="height: 80px; border-bottom: 1px solid #666; margin: 10px 0;"></div>'
+                            }
+                            <p style="margin-top: 10px; font-size: 14px;">${document.getElementById('client-name').value || 'Nom du client'}</p>
+                            <p style="font-size: 12px; color: #666;">Date: ${document.getElementById('invoice-date').value || new Date().toLocaleDateString('fr-FR')}</p>
+                        </div>
+                        
+                        <div style="text-align: center; flex: 1;">
+                            <p style="font-size: 16px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #666; padding-bottom: 5px; display: inline-block;">
+                                Signature ESODI
+                            </p>
+                            ${ownerSignatureData ? 
+                                `<img src="${ownerSignatureData}" style="max-width: 200px; max-height: 80px; display: block; margin: 10px auto;" alt="Signature ESODI">` :
+                                '<div style="height: 80px; border-bottom: 1px solid #666; margin: 10px 0;"></div>'
+                            }
+                            <p style="margin-top: 10px; font-size: 14px;">${ownerInfo.name}</p>
+                            <p style="font-size: 12px; color: #666;">Date: ${document.getElementById('invoice-date').value || new Date().toLocaleDateString('fr-FR')}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 40px; font-size: 12px; color: #666; border-top: 1px solid #ddd; padding-top: 20px;">
+                    <p>Merci pour votre confiance !</p>
+                    <p>ESODI - WhatsApp: ${ownerInfo.phone} - Email: ${ownerInfo.email}</p>
+                    <p>Cette facture a été générée électroniquement et ne nécessite pas de cachet</p>
+                </div>
+            `;
         }
         
-        // Imprimer la facture
+        // CORRECTION : Imprimer la facture
         function printInvoice() {
             if (invoiceItems.length === 0) {
                 showInvoiceStatus('Ajoutez des articles avant d\'imprimer', 'error');
                 return;
             }
             
-            // Mettre à jour la zone d'impression
+            // Mettre à jour la zone d'impression avec les données actuelles
             updatePrintArea();
             
-            // Lancer l'impression
-            window.print();
+            // Créer une nouvelle fenêtre pour l'impression
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html lang="fr">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Facture ESODI - ${document.getElementById('invoice-number').value}</title>
+                    <style>
+                        @media print {
+                            body {
+                                font-family: Arial, sans-serif;
+                                margin: 20px;
+                                color: #333;
+                            }
+                            
+                            .print-area {
+                                max-width: 800px;
+                                margin: 0 auto;
+                                padding: 20px;
+                                background: white;
+                            }
+                            
+                            .print-header {
+                                text-align: center;
+                                margin-bottom: 30px;
+                                border-bottom: 3px solid #006400;
+                                padding-bottom: 20px;
+                            }
+                            
+                            .print-logo {
+                                font-size: 48px;
+                                background: #006400;
+                                color: white;
+                                width: 80px;
+                                height: 80px;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                margin: 0 auto 15px;
+                                font-weight: bold;
+                            }
+                            
+                            .print-section {
+                                margin-bottom: 25px;
+                                page-break-inside: avoid;
+                            }
+                            
+                            .print-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin: 20px 0;
+                            }
+                            
+                            .print-table th {
+                                background-color: #f0f0f0;
+                                padding: 12px;
+                                text-align: left;
+                                border: 1px solid #ddd;
+                                font-weight: bold;
+                            }
+                            
+                            .print-table td {
+                                padding: 12px;
+                                border: 1px solid #ddd;
+                            }
+                            
+                            .print-totals {
+                                background-color: #f9f9f9;
+                                padding: 20px;
+                                border: 2px solid #006400;
+                                margin-top: 30px;
+                                page-break-inside: avoid;
+                            }
+                            
+                            .print-signatures {
+                                margin-top: 50px;
+                                padding-top: 30px;
+                                border-top: 2px dashed #666;
+                                page-break-inside: avoid;
+                            }
+                            
+                            h1, h2, h3 {
+                                color: #006400;
+                            }
+                            
+                            .amount-in-words {
+                                background-color: #f0fff0;
+                                padding: 15px;
+                                border-radius: 8px;
+                                margin-top: 15px;
+                                border-left: 4px solid #006400;
+                            }
+                            
+                            @page {
+                                margin: 20mm;
+                            }
+                        }
+                        
+                        /* Styles pour l'aperçu à l'écran */
+                        body {
+                            font-family: Arial, sans-serif;
+                            margin: 20px;
+                            color: #333;
+                            background: #f5f5f5;
+                        }
+                        
+                        .print-area {
+                            max-width: 800px;
+                            margin: 0 auto;
+                            padding: 30px;
+                            background: white;
+                            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+                            border-radius: 10px;
+                        }
+                        
+                        .print-header {
+                            text-align: center;
+                            margin-bottom: 30px;
+                            border-bottom: 3px solid #006400;
+                            padding-bottom: 20px;
+                        }
+                        
+                        .print-logo {
+                            font-size: 48px;
+                            background: #006400;
+                            color: white;
+                            width: 80px;
+                            height: 80px;
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            margin: 0 auto 15px;
+                            font-weight: bold;
+                        }
+                        
+                        .print-section {
+                            margin-bottom: 25px;
+                        }
+                        
+                        .print-table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin: 20px 0;
+                        }
+                        
+                        .print-table th {
+                            background-color: #f0f0f0;
+                            padding: 12px;
+                            text-align: left;
+                            border: 1px solid #ddd;
+                            font-weight: bold;
+                        }
+                        
+                        .print-table td {
+                            padding: 12px;
+                            border: 1px solid #ddd;
+                        }
+                        
+                        .print-totals {
+                            background-color: #f9f9f9;
+                            padding: 20px;
+                            border: 2px solid #006400;
+                            margin-top: 30px;
+                        }
+                        
+                        .print-signatures {
+                            margin-top: 50px;
+                            padding-top: 30px;
+                            border-top: 2px dashed #666;
+                        }
+                        
+                        h1, h2, h3 {
+                            color: #006400;
+                        }
+                        
+                        .amount-in-words {
+                            background-color: #f0fff0;
+                            padding: 15px;
+                            border-radius: 8px;
+                            margin-top: 15px;
+                            border-left: 4px solid #006400;
+                        }
+                        
+                        .print-actions {
+                            text-align: center;
+                            margin-top: 30px;
+                            padding-top: 20px;
+                            border-top: 1px solid #ddd;
+                        }
+                        
+                        button {
+                            background-color: #006400;
+                            color: white;
+                            border: none;
+                            padding: 12px 24px;
+                            border-radius: 5px;
+                            cursor: pointer;
+                            font-size: 16px;
+                            margin: 0 10px;
+                        }
+                        
+                        button:hover {
+                            background-color: #228B22;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="print-area">
+                        ${document.getElementById('print-content').innerHTML}
+                        
+                        <div class="print-actions">
+                            <button onclick="window.print()">Imprimer</button>
+                            <button onclick="window.close()">Fermer</button>
+                        </div>
+                    </div>
+                    
+                    <script>
+                        // Redimensionner les images de signature pour l'impression
+                        window.onload = function() {
+                            const images = document.querySelectorAll('img');
+                            images.forEach(img => {
+                                img.style.maxWidth = '200px';
+                                img.style.maxHeight = '80px';
+                                img.style.display = 'block';
+                                img.style.margin = '10px auto';
+                            });
+                        };
+                    <\/script>
+                </body>
+                </html>
+            `);
             
-            showInvoiceStatus('Impression lancée !', 'success');
+            printWindow.document.close();
+            
+            // Afficher un message de succès
+            showInvoiceStatus('Prévisualisation d\'impression ouverte !', 'success');
         }
         
         // Générer la facture complète
@@ -2179,6 +2629,9 @@
                                 <button class="action-button-small btn-whatsapp" onclick="resendInvoice(${invoice.id})" style="background-color: #25D366;">
                                     <i class="fab fa-whatsapp"></i> Renvoyer
                                 </button>
+                                <button class="action-button-small btn-warning" onclick="printSavedInvoice(${invoice.id})" style="background-color: #f59e0b;">
+                                    <i class="fas fa-print"></i> Imprimer
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -2311,6 +2764,271 @@
             if (invoice) {
                 sendWhatsAppMessage(invoice);
                 showInvoiceStatus('Facture renvoyée sur WhatsApp !', 'success');
+            }
+        }
+        
+        // Imprimer une facture sauvegardée
+        function printSavedInvoice(invoiceId) {
+            const savedInvoices = JSON.parse(localStorage.getItem('savedInvoices') || '[]');
+            const invoice = savedInvoices.find(inv => inv.id === invoiceId);
+            
+            if (invoice) {
+                // Créer une nouvelle fenêtre pour l'impression
+                const printWindow = window.open('', '_blank');
+                
+                // Calculer les totaux
+                let subtotal = 0;
+                let taxAmount = 0;
+                let total = 0;
+                
+                invoice.items.forEach(item => {
+                    const itemTotal = item.quantity * item.price;
+                    subtotal += itemTotal;
+                    taxAmount += itemTotal * (item.tax / 100);
+                });
+                
+                total = subtotal + taxAmount;
+                const totalInWords = numberToFrenchWords(total);
+                
+                printWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html lang="fr">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Facture ESODI - ${invoice.number}</title>
+                        <style>
+                            @media print {
+                                body {
+                                    font-family: Arial, sans-serif;
+                                    margin: 20px;
+                                    color: #333;
+                                }
+                                
+                                .print-area {
+                                    max-width: 800px;
+                                    margin: 0 auto;
+                                    padding: 20px;
+                                    background: white;
+                                }
+                                
+                                .print-header {
+                                    text-align: center;
+                                    margin-bottom: 30px;
+                                    border-bottom: 3px solid #006400;
+                                    padding-bottom: 20px;
+                                }
+                                
+                                .print-logo {
+                                    font-size: 48px;
+                                    background: #006400;
+                                    color: white;
+                                    width: 80px;
+                                    height: 80px;
+                                    border-radius: 50%;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    margin: 0 auto 15px;
+                                    font-weight: bold;
+                                }
+                                
+                                .print-section {
+                                    margin-bottom: 25px;
+                                    page-break-inside: avoid;
+                                }
+                                
+                                .print-table {
+                                    width: 100%;
+                                    border-collapse: collapse;
+                                    margin: 20px 0;
+                                }
+                                
+                                .print-table th {
+                                    background-color: #f0f0f0;
+                                    padding: 12px;
+                                    text-align: left;
+                                    border: 1px solid #ddd;
+                                    font-weight: bold;
+                                }
+                                
+                                .print-table td {
+                                    padding: 12px;
+                                    border: 1px solid #ddd;
+                                }
+                                
+                                .print-totals {
+                                    background-color: #f9f9f9;
+                                    padding: 20px;
+                                    border: 2px solid #006400;
+                                    margin-top: 30px;
+                                    page-break-inside: avoid;
+                                }
+                                
+                                .print-signatures {
+                                    margin-top: 50px;
+                                    padding-top: 30px;
+                                    border-top: 2px dashed #666;
+                                    page-break-inside: avoid;
+                                }
+                                
+                                h1, h2, h3 {
+                                    color: #006400;
+                                }
+                                
+                                .amount-in-words {
+                                    background-color: #f0fff0;
+                                    padding: 15px;
+                                    border-radius: 8px;
+                                    margin-top: 15px;
+                                    border-left: 4px solid #006400;
+                                }
+                                
+                                @page {
+                                    margin: 20mm;
+                                }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="print-area">
+                            <div class="print-header">
+                                <div class="print-logo">ES</div>
+                                <h1 style="color: #006400; margin-bottom: 5px;">${ownerInfo.name}</h1>
+                                <p style="font-size: 16px;">${ownerInfo.address || 'Adresse à définir'}</p>
+                                <p style="font-size: 14px; margin-top: 5px;">
+                                    <strong>Téléphone:</strong> ${ownerInfo.phone} | 
+                                    <strong>Email:</strong> ${ownerInfo.email}
+                                </p>
+                            </div>
+                            
+                            <div class="print-section">
+                                <h2 style="color: #006400; border-bottom: 2px solid #006400; padding-bottom: 10px; margin-bottom: 20px;">
+                                    FACTURE N°: ${invoice.number}
+                                </h2>
+                                
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
+                                    <div style="flex: 1;">
+                                        <h3 style="color: #006400; margin-bottom: 10px;">Facturé à:</h3>
+                                        <p style="font-size: 16px; margin-bottom: 5px;"><strong>${invoice.client.name}</strong></p>
+                                        <p style="font-size: 14px;">${invoice.client.phone}</p>
+                                        ${invoice.client.email ? `<p style="font-size: 14px;">${invoice.client.email}</p>` : ''}
+                                        ${invoice.client.address ? `<p style="font-size: 14px;">${invoice.client.address}</p>` : ''}
+                                    </div>
+                                    
+                                    <div style="flex: 1; text-align: right;">
+                                        <h3 style="color: #006400; margin-bottom: 10px;">Détails facture:</h3>
+                                        <p style="font-size: 14px; margin-bottom: 5px;"><strong>Date facturation:</strong> ${invoice.date}</p>
+                                        <p style="font-size: 14px; margin-bottom: 5px;"><strong>Date échéance:</strong> ${invoice.dueDate}</p>
+                                        <p style="font-size: 14px;"><strong>Méthode paiement:</strong> ${invoice.paymentMethod}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="print-section">
+                                <h3 style="color: #006400; margin-bottom: 15px;">Articles et Services</h3>
+                                
+                                <table class="print-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Description</th>
+                                            <th>Quantité</th>
+                                            <th>Prix unitaire</th>
+                                            <th>TVA</th>
+                                            <th>Total TTC</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${invoice.items.map(item => {
+                                            const itemTotal = item.quantity * item.price;
+                                            const itemTotalTTC = itemTotal + (itemTotal * (item.tax / 100));
+                                            return `
+                                                <tr>
+                                                    <td>${item.description}</td>
+                                                    <td>${item.quantity}</td>
+                                                    <td>${formatFCFA(item.price)}</td>
+                                                    <td>${item.tax}%</td>
+                                                    <td>${formatFCFA(itemTotalTTC)}</td>
+                                                </tr>
+                                            `;
+                                        }).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div class="print-totals">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                    <span style="font-size: 16px;">Sous-total HT:</span>
+                                    <span style="font-size: 16px; font-weight: bold;">${formatFCFA(subtotal)}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                    <span style="font-size: 16px;">TVA:</span>
+                                    <span style="font-size: 16px; font-weight: bold;">${formatFCFA(taxAmount)}</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; padding-top: 15px; border-top: 2px solid #006400;">
+                                    <span style="font-size: 18px; font-weight: bold;">TOTAL TTC:</span>
+                                    <span style="font-size: 20px; font-weight: bold; color: #006400;">${formatFCFA(total)}</span>
+                                </div>
+                                
+                                <div class="amount-in-words" style="margin-top: 20px; padding: 15px; background: #f0fff0; border-radius: 8px;">
+                                    <p style="font-size: 16px;"><strong>Arrêtée à la somme de :</strong><br>${totalInWords}</p>
+                                </div>
+                            </div>
+                            
+                            ${invoice.notes ? `
+                                <div class="print-section">
+                                    <h3 style="color: #006400; margin-bottom: 10px;">Notes:</h3>
+                                    <p style="font-size: 14px; padding: 10px; background: #f9f9f9; border-radius: 5px;">
+                                        ${invoice.notes}
+                                    </p>
+                                </div>
+                            ` : ''}
+                            
+                            <div class="print-signatures">
+                                <div style="display: flex; justify-content: space-between; margin-top: 30px;">
+                                    <div style="text-align: center; flex: 1;">
+                                        <p style="font-size: 16px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #666; padding-bottom: 5px; display: inline-block;">
+                                            Signature du Client
+                                        </p>
+                                        ${invoice.clientSignature ? 
+                                            `<img src="${invoice.clientSignature}" style="max-width: 200px; max-height: 80px; display: block; margin: 10px auto;" alt="Signature client">` :
+                                            '<div style="height: 80px; border-bottom: 1px solid #666; margin: 10px 0;"></div>'
+                                        }
+                                        <p style="margin-top: 10px; font-size: 14px;">${invoice.client.name}</p>
+                                        <p style="font-size: 12px; color: #666;">Date: ${invoice.date}</p>
+                                    </div>
+                                    
+                                    <div style="text-align: center; flex: 1;">
+                                        <p style="font-size: 16px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #666; padding-bottom: 5px; display: inline-block;">
+                                            Signature ESODI
+                                        </p>
+                                        ${invoice.ownerSignature ? 
+                                            `<img src="${invoice.ownerSignature}" style="max-width: 200px; max-height: 80px; display: block; margin: 10px auto;" alt="Signature ESODI">` :
+                                            '<div style="height: 80px; border-bottom: 1px solid #666; margin: 10px 0;"></div>'
+                                        }
+                                        <p style="margin-top: 10px; font-size: 14px;">${ownerInfo.name}</p>
+                                        <p style="font-size: 12px; color: #666;">Date: ${invoice.date}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="text-align: center; margin-top: 40px; font-size: 12px; color: #666; border-top: 1px solid #ddd; padding-top: 20px;">
+                                <p>Merci pour votre confiance !</p>
+                                <p>ESODI - WhatsApp: ${ownerInfo.phone} - Email: ${ownerInfo.email}</p>
+                                <p>Cette facture a été générée électroniquement et ne nécessite pas de cachet</p>
+                            </div>
+                        </div>
+                        
+                        <script>
+                            window.onload = function() {
+                                window.print();
+                            };
+                        <\/script>
+                    </body>
+                    </html>
+                `);
+                
+                printWindow.document.close();
             }
         }
         
